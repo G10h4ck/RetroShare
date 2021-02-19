@@ -1180,7 +1180,9 @@ std::error_condition RsGxsNetTunnelService::turtleSearchRequest(
 	uint8_t* buf = rs_malloc<uint8_t>(size);
 
 	tSerializer.serialise(&searchItem, buf, &size);
+
 	requestId = mTurtle->turtleSearch(buf, size, this);
+	if(!requestId) return std::errc::result_out_of_range;
 
 	return std::error_condition();
 }
@@ -1190,6 +1192,9 @@ bool RsGxsNetTunnelService::receiveSearchRequest(
         uint8_t*& search_result_data, uint32_t& search_result_data_size,
         uint32_t& max_allowed_hits )
 {
+	/* Must return true only if there are matching results available, false in
+	 * all other cases. @see RsTurleClientService */
+
 	RS_DBG3("");
 
 	RsGxsNetTunnelSerializer tSerializer;
@@ -1253,7 +1258,7 @@ bool RsGxsNetTunnelService::receiveSearchRequest(
 		if(!substring_gr)
 		{
 			RS_WARN( "Got item with TURTLE_SEARCH_GROUP_REQUEST subtype: ",
-			         item->PacketSubType(), " but casting failed!");
+			         item->PacketSubType(), " but casting failed!" );
 			break;
 		}
 
@@ -1274,13 +1279,7 @@ bool RsGxsNetTunnelService::receiveSearchRequest(
 			search_result_item.encrypted_group_data = encrypted_group_data;
 			search_result_item.encrypted_group_data_len = encrypted_group_data_len;
 			search_result_data_size = tSerializer.size(&search_result_item);
-			search_result_data = (unsigned char*)rs_malloc(search_result_data_size);
-			if(!search_result_data)
-			{
-				RS_FATAL("Allocation failed!");
-				print_stacktrace();
-				break;
-			}
+			search_result_data = rs_malloc<uint8_t>(search_result_data_size);
 
 			tSerializer.serialise(
 			            &search_result_item,
@@ -1316,8 +1315,26 @@ bool RsGxsNetTunnelService::receiveSearchRequest(
 		auto errc = sService->handleDistantSearchRequest(
 		            searchItem->mSearchData, searchItem->mSearchDataSize,
 		            replyItem.mReplyData, replyItem.mReplyDataSize );
-		RS_DBG(errc);
-		if(errc) break;
+		if(errc)
+		{
+			// Some error has been reported by the searchable service
+			RS_WARN("searchable service: ", sType , " reported: ", errc);
+			break;
+		}
+
+		if( (!replyItem.mReplyData && replyItem.mReplyDataSize) ||
+		    (replyItem.mReplyData && !replyItem.mReplyDataSize) )
+		{
+			// Inconsistent behaviour from searcheable service
+			RS_ERR( "searchable service: ", sType , " silently failed handling "
+			        "inconsistent result mReplyData: ", replyItem.mReplyData,
+			        " mReplyDataSize: ", replyItem.mReplyDataSize );
+			break;
+		}
+
+		/* Our node have 0 matching results */
+		if(!replyItem.mReplyData && !replyItem.mReplyDataSize)
+			break;
 
 		search_result_data_size = tSerializer.size(&replyItem);
 		search_result_data = rs_malloc<uint8_t>(search_result_data_size);
