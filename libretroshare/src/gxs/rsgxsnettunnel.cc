@@ -1297,10 +1297,10 @@ bool RsGxsNetTunnelService::receiveSearchRequest(
 
 		max_allowed_hits = RS_GXS_NET_TUNNEL_MAX_ALLOWED_HITS_GROUP_SEARCH;
 
+		uint16_t sType = static_cast<uint16_t>(searchItem->mServiceType);
 		RsNetworkExchangeService* sService = nullptr;
 		{
 			RS_STACK_MUTEX(mGxsNetTunnelMtx);
-			uint16_t sType = static_cast<uint16_t>(searchItem->mServiceType);
 			auto it = mSearchableServices.find(sType);
 			if( it == mSearchableServices.end())
 			{
