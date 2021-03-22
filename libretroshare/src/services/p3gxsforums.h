@@ -163,6 +163,9 @@ public:
 	        const std::string& matchString,
 	        std::vector<RsGxsSearchResult>& searchResults ) override;
 
+	/// @see RsGxsForums
+	std::error_condition requestSynchronization() override;
+
 #ifdef RS_DEEP_FORUMS_INDEX
 	/// @see RsNxsObserver
 	std::error_condition handleDistantSearchRequest(
@@ -174,6 +177,7 @@ public:
 	        const TurtleRequestId requestId,
 	        rs_owner_ptr<uint8_t>& resultData, uint32_t& resultSize ) override;
 #endif
+
 
     /// implementation of rsGxsGorums
     ///
