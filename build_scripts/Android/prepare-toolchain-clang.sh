@@ -93,6 +93,9 @@ define_default_value CIMG_SOURCE_SHA256 595dda9718431a123b418fa0db88e248c44590d4
 define_default_value PHASH_SOURCE_REPO "https://gitlab.com/g10h4ck/pHash.git"
 define_default_value PHASH_SOURCE_VERSION origin/android-ndk
 
+define_default_value MVPTREE_SOURCE_REPO "https://github.com/starkdg/mvptree.git"
+define_default_value MVPTREE_SOURCE_VERSION origin/master
+
 define_default_value REPORT_DIR "$(pwd)/$(basename ${NATIVE_LIBS_TOOLCHAIN_PATH})_build_report/"
 
 cArch=""
@@ -754,11 +757,24 @@ build_phash()
 
 	git_source_get "$S_dir" "$PHASH_SOURCE_REPO" "${PHASH_SOURCE_VERSION}"
 
-	rm -rf $B_dir; mkdir $B_dir ; cd $B_dir
+	rm -rf $B_dir; mkdir $B_dir ; pushd $B_dir
 	andro_cmake -DPHASH_DYNAMIC=OFF -DPHASH_STATIC=ON  -B. -H../pHash
 	make -j${HOST_NUM_CPU}
 	make install
-	cd ..
+	popd
+}
+
+build_mvptree()
+{
+	S_dir="mvptree"
+	B_dir="${S_dir}-build"
+	
+	git_source_get "$S_dir" "$MVPTREE_SOURCE_REPO" "${MVPTREE_SOURCE_VERSION}"
+	rm -rf $B_dir; mkdir $B_dir ; pushd $B_dir
+	andro_cmake -B. -H../${S_dir}
+	make -j${HOST_NUM_CPU}
+	make install
+	popd
 }
 
 build_default_toolchain()
@@ -773,6 +789,7 @@ build_default_toolchain()
 	run_task xapian
 	run_task miniupnpc
 	run_task phash
+	run_task mvptree
 	run_task deduplicate_includes
 }
 
